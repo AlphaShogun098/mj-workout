@@ -983,14 +983,21 @@ function WorkoutExerciseCard({
                   size="sm"
                   variant="secondary"
                   onClick={() => {
-                    setLastCompletedSet(idx);
-                    setTimerRunning(false);
-                    setSecondsLeft(rest);
-                    setTimerRunning(true);
-                    try {
-                      navigator.vibrate?.(60);
-                    } catch {}
-                  }}
+  setLastCompletedSet(idx);
+
+  // XP flash animation
+  const el = document.body;
+  el.classList.add("xp-flash");
+  setTimeout(() => el.classList.remove("xp-flash"), 300);
+
+  setTimerRunning(false);
+  setSecondsLeft(rest);
+  setTimerRunning(true);
+
+  try {
+    navigator.vibrate?.(60);
+  } catch {}
+}}
                 >
                   Done
                 </Button>
@@ -1025,8 +1032,11 @@ export default function App() {
   const [sessionDate, setSessionDate] = useState(todayISO());
   const [showSummary, setShowSummary] = useState(false);
   const [levelUp, setLevelUp] = useState(null);
+  const levelUpSound = useRef(null);
 
   useEffect(() => {
+document.documentElement.classList.add("dark");
+  document.body.style.backgroundColor = "#000";
     saveData(data);
   }, [data]);
 
@@ -1180,7 +1190,7 @@ function updateSet(exId, setIdx, newSet) {
     try {
       navigator.vibrate?.([40, 40, 40]);
     } catch {}
-    setLevelUp(levelUpPayload);
+    setLevelUp(levelUpPayload);levelUpSound.current?.play();
   }
 }
 
@@ -1282,19 +1292,77 @@ function updateSet(exId, setIdx, newSet) {
   }, [data.logs.sessions, data.logs.prs, sessionDate, workoutList]);
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white">
+/* Background layer (always visible) */}
+<div className="fixed inset-0 z-0 pointer-events-none">
+  <div
+    className="absolute inset-0"
+    style={{
+      backgroundImage: [
+        "radial-gradient(circle at 20% 10%, rgba(0,255,255,0.35), transparent 40%)",
+        "radial-gradient(circle at 80% 30%, rgba(139,92,246,0.45), transparent 50%)",
+        "radial-gradient(circle at 30% 90%, rgba(168,85,247,0.25), transparent 55%)",
+        "radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.92) 78%)",
+      ].join(", "),
+    }}
+  />
+  <div
+    className="absolute inset-0 opacity-25"
+    style={{
+      backgroundImage:
+        "repeating-linear-gradient(180deg, rgba(255,255,255,0.07) 0px, rgba(255,255,255,0.07) 1px, transparent 1px, transparent 10px)",
+    }}
+  />
+  <div className="absolute inset-0 opacity-30 animate-pulse"
+       style={{
+         backgroundImage:
+           "linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.12) 50%, transparent 100%)",
+       }}
+  />
+</div>
 {/* Deep vignette + aura */}
-<div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_20%,rgba(34,211,238,0.18),transparent_45%),radial-gradient(circle_at_70%_60%,rgba(168,85,247,0.20),transparent_55%),radial-gradient(circle_at_20%_80%,rgba(99,102,241,0.18),transparent_55%)]" />
-<div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.9)_78%)]" />
-<div className="pointer-events-none fixed inset-0 -z-10 opacity-25 bg-[repeating-linear-gradient(180deg,rgba(255,255,255,0.05)_0px,rgba(255,255,255,0.05)_1px,transparent_1px,transparent_10px)]" />
+{/* Aura background (inline styles so it always renders) */}
+<div
+  className="pointer-events-none fixed inset-0 -z-10"
+  style={{
+    backgroundImage: [
+      "radial-gradient(circle at 20% 10%, rgba(0,255,255,0.35), transparent 40%)",
+      "radial-gradient(circle at 80% 30%, rgba(139,92,246,0.45), transparent 50%)",
+      "radial-gradient(circle at 30% 90%, rgba(168,85,247,0.25), transparent 55%)",
+      "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.92) 78%)",
+    ].join(", "),
+  }}
+/>
 
-      {/* Solo-leveling vibe: aura + scanning lines */}
-      <div className="pointer-events-none fixed inset-0 -z-10 opacity-40 bg-[radial-gradient(circle_at_20%_10%,rgba(34,211,238,0.35),transparent_45%),radial-gradient(circle_at_80%_30%,rgba(99,102,241,0.40),transparent_55%),radial-gradient(circle_at_30%_90%,rgba(168,85,247,0.20),transparent_55%)]" />
-      <div className="pointer-events-none fixed inset-0 -z-10 opacity-30 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.06)_50%,transparent_100%)] animate-pulse" />
-      <div className="pointer-events-none fixed inset-0 -z-10 opacity-20 bg-[repeating-linear-gradient(180deg,rgba(255,255,255,0.06)_0px,rgba(255,255,255,0.06)_1px,transparent_1px,transparent_10px)]" />
+{/* Scan lines */}
+<div
+  className="pointer-events-none fixed inset-0 -z-10 opacity-25"
+  style={{
+    backgroundImage:
+      "repeating-linear-gradient(180deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 10px)",
+  }}
+/>
+
+{/* Energy sweep */}
+<div
+  className="pointer-events-none fixed inset-0 -z-10 opacity-30"
+  style={{
+    backgroundImage:
+      "linear-gradient(90deg, transparent 0%, rgba(0,255,255,0.10) 50%, transparent 100%)",
+    animation: "mjSweep 3.2s ease-in-out infinite",
+  }}
+/>
+
+<style>{`
+  @keyframes mjSweep {
+    0% { transform: translateX(-20%); opacity: 0.12; }
+    50% { transform: translateX(0%); opacity: 0.35; }
+    100% { transform: translateX(20%); opacity: 0.12; }
+  }
+`}</style>
       
   <LevelUpToast data={levelUp} onClose={() => setLevelUp(null)} />
-      <div className="mx-auto max-w-2xl p-3 sm:p-6 space-y-4">
+      <div className="relative z-10 mx-auto max-w-2xl p-3 sm:p-6 space-y-4">
         <header className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
