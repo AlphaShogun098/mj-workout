@@ -1292,7 +1292,7 @@ function updateSet(exId, setIdx, newSet) {
   }, [data.logs.sessions, data.logs.prs, sessionDate, workoutList]);
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white pb-[env(safe-area-inset-bottom)]">
 {/* Background layer (always visible) */}
 <div className="fixed inset-0 z-0 pointer-events-none">
   <div
