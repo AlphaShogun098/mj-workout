@@ -1362,8 +1362,8 @@ function updateSet(exId, setIdx, newSet) {
 `}</style>
       
   <LevelUpToast data={levelUp} onClose={() => setLevelUp(null)} />
-      <div className="relative z-10 mx-auto max-w-2xl p-3 sm:p-6 space-y-4">
-        <header className="flex items-start justify-between gap-3">
+      <div className="relative z-10 w-full max-w-md mx-auto px-4 pt-4 pb-20 space-y-4">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
               <span className="absolute -z-10 h-14 w-14 rounded-full blur-2xl bg-cyan-400/20" />
@@ -1468,7 +1468,7 @@ function updateSet(exId, setIdx, newSet) {
         </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 sm:grid-cols-6 rounded-2xl bg-white/5 border border-white/10">
+          <TabsList className="flex overflow-x-auto rounded-2xl bg-white/5 border border-white/10 p-1 space-x-1">
             <TabsTrigger value="dashboard">Home</TabsTrigger>
             <TabsTrigger value="workouts">Workouts</TabsTrigger>
             <TabsTrigger value="meals">Meals</TabsTrigger>
