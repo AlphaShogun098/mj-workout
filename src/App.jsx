@@ -526,6 +526,72 @@ function saveData(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+function parseRepRange(repsStr) {
+  if (!repsStr) return null;
+  // Normalize dashes: "6–10" or "6-10"
+  const s = String(repsStr).replace("–", "-");
+  const m = s.match(/(\d+)\s*-\s*(\d+)/);
+  if (!m) return null;
+  return { min: Number(m[1]), max: Number(m[2]) };
+}
+
+function getMostRecentSessionForExercise(sessions, beforeDateISO, exId) {
+  const dates = Object.keys(sessions || {}).filter((d) => d < beforeDateISO);
+  dates.sort(); // ascending
+  for (let i = dates.length - 1; i >= 0; i--) {
+    const day = sessions[dates[i]];
+    if (day && day[exId] && Array.isArray(day[exId].sets) && day[exId].sets.length) {
+      return { date: dates[i], log: day[exId] };
+    }
+  }
+  return null;
+}
+
+function modeWeight(sets) {
+  // pick the most common kg (rounded to nearest 0.5)
+  const counts = new Map();
+  for (const s of sets) {
+    const kg = Number(s?.kg);
+    const reps = Number(s?.reps);
+    if (!isFinite(kg) || kg <= 0 || !isFinite(reps) || reps <= 0) continue;
+    const rounded = Math.round(kg * 2) / 2; // 0.5kg granularity
+    counts.set(rounded, (counts.get(rounded) || 0) + 1);
+  }
+  let best = null;
+  let bestCount = -1;
+  for (const [kg, c] of counts.entries()) {
+    if (c > bestCount) {
+      best = kg;
+      bestCount = c;
+    }
+  }
+  return best; // can be null
+}
+
+function suggestNextLoad({ repRange, sets }) {
+  // returns { deltaKg, reason }
+  if (!repRange) return { deltaKg: 0, reason: "Focus on quality reps." };
+
+  const valid = sets
+    .map((s) => ({ kg: Number(s.kg), reps: Number(s.reps) }))
+    .filter((s) => isFinite(s.kg) && s.kg > 0 && isFinite(s.reps) && s.reps > 0);
+
+  if (!valid.length) return { deltaKg: 0, reason: "Log at least one set to get a suggestion." };
+
+  // Working-set detection: use the most common weight
+  const wk = modeWeight(valid);
+  if (!wk) return { deltaKg: 0, reason: "Log at least one set to get a suggestion." };
+
+  const workingSets = valid.filter((s) => Math.round(s.kg * 2) / 2 === wk);
+  const hitTop = workingSets.filter((s) => s.reps >= repRange.max).length;
+  const belowMin = workingSets.filter((s) => s.reps < repRange.min).length;
+
+  // Simple rule (solid for bulking):
+  if (hitTop >= 2) return { deltaKg: 2.5, reason: `Hit top reps on ${hitTop} sets.` };
+  if (belowMin >= 2) return { deltaKg: -2.5, reason: `Below min reps on ${belowMin} sets.` };
+  return { deltaKg: 0, reason: "Add 1 rep per set next time." };
+}
+
 function todayISO() {
   const d = new Date();
   const y = d.getFullYear();
@@ -729,6 +795,7 @@ function recommendedRestSeconds(level, exId, base) {
 function WorkoutExerciseCard({
   ex,
   level,
+  suggestion,
   isActive,
   onPrev,
   onNext,
@@ -837,6 +904,24 @@ function WorkoutExerciseCard({
               {ex.sets} sets • {ex.reps} • Start:{" "}
               <span className="font-medium text-white">{startText}</span>
             </div>
+{suggestion && (
+  <div className="mt-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+    <div className="text-sm font-semibold text-white">Smart suggestion</div>
+    <div className="mt-1 text-sm text-slate-300/80 space-y-0.5">
+      <div>
+        <span className="text-slate-300/70">Last:</span>{" "}
+        <span className="text-white">{suggestion.lastText}</span>
+      </div>
+      <div>
+        <span className="text-slate-300/70">Next:</span>{" "}
+        <span className="text-cyan-200 font-semibold">{suggestion.nextText}</span>
+      </div>
+      {suggestion.reason ? (
+        <div className="mt-1 text-xs text-slate-300/70">{suggestion.reason}</div>
+      ) : null}
+    </div>
+  </div>
+)}
           </div>
           <div className="flex gap-2 flex-col items-end">
             <Button variant="outline" size="sm" className="rounded-2xl border-white/10 bg-white/5 hover:bg-white/10" onClick={onPrev}>
@@ -1075,6 +1160,54 @@ document.documentElement.classList.add("dark");
     const base = exerciseLibrary[dayTab] || [];
     return base.map((e) => applyLevel(e, level));
   }, [dayTab, level]);
+
+const suggestionsById = useMemo(() => {
+  const sessions = data.logs.sessions || {};
+  const out = {};
+
+  for (const ex of workoutList) {
+    const repRange = parseRepRange(ex.reps);
+    const prev = getMostRecentSessionForExercise(sessions, sessionDate, ex.id);
+
+    if (!prev) {
+      out[ex.id] = {
+        lastText: "No history yet",
+        nextText: "Log your first session",
+        reason: "",
+      };
+      continue;
+    }
+
+    const sets = prev.log?.sets || [];
+    const wk = modeWeight(sets);
+    const working = wk != null ? sets.filter((s) => Math.round(Number(s?.kg) * 2) / 2 === wk) : [];
+
+    // find a representative "last" line from working sets
+    const bestWorkingReps = working
+      .map((s) => Number(s?.reps))
+      .filter((n) => isFinite(n) && n > 0)
+      .sort((a, b) => b - a)[0];
+
+    const { deltaKg, reason } = suggestNextLoad({ repRange, sets });
+    const nextKg = wk != null ? Math.max(0, wk + deltaKg) : null;
+
+    out[ex.id] = {
+      lastText:
+        wk != null && bestWorkingReps
+          ? `${wk} kg × ${bestWorkingReps} (on ${prev.date})`
+          : `Logged (on ${prev.date})`,
+      nextText:
+        wk != null
+          ? deltaKg === 0
+            ? `${wk} kg (aim +1 rep)`
+            : `${nextKg} kg (${deltaKg > 0 ? "+2.5" : "-2.5"} kg)`
+          : "Log more sets",
+      reason,
+    };
+  }
+
+  return out;
+}, [data.logs.sessions, sessionDate, workoutList]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -1468,7 +1601,7 @@ function updateSet(exId, setIdx, newSet) {
         </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="flex overflow-x-auto rounded-2xl bg-white/5 border border-white/10 p-1 space-x-1">
+          <TabsList className="grid grid-cols-6 rounded-2xl bg-white/5 border border-white/10 p-1 gap-1">
             <TabsTrigger value="dashboard">Home</TabsTrigger>
             <TabsTrigger value="workouts">Workouts</TabsTrigger>
             <TabsTrigger value="meals">Meals</TabsTrigger>
@@ -1741,6 +1874,7 @@ function updateSet(exId, setIdx, newSet) {
                       key={ex.id}
                       ex={ex}
                       level={level}
+                      suggestion={suggestionsById[ex.id]}
                       isActive={idx === activeIndex}
                       onPrev={() =>
                         setActiveIndex((i) => clamp(i - 1, 0, workoutList.length - 1))
