@@ -1293,7 +1293,7 @@ function updateSet(exId, setIdx, newSet) {
 
   return (
     <div className="min-h-screen bg-black text-white">
-/* Background layer (always visible) */}
+{/* Background layer (always visible) */}
 <div className="fixed inset-0 z-0 pointer-events-none">
   <div
     className="absolute inset-0"
