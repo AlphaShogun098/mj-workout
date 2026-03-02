@@ -1869,6 +1869,65 @@ function updateSet(exId, setIdx, newSet) {
                 )}
 
                 <div className="space-y-4">
+                  {/* Warm-Up Block */}
+<Card className="rounded-3xl border-white/10 bg-white/5 backdrop-blur">
+  <CardContent className="p-4 space-y-3">
+    <SectionTitle title="Warm-Up Protocol" />
+
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-3 space-y-2">
+      <div className="text-sm font-semibold text-white">
+        1. General Warm-Up (5 mins)
+      </div>
+      <ul className="list-disc pl-5 space-y-1 text-sm text-slate-300/80">
+        <li>Treadmill incline walk / Bike / Row</li>
+        <li>Light sweat, not fatigued</li>
+      </ul>
+    </div>
+
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-3 space-y-2">
+      <div className="text-sm font-semibold text-white">
+        2. Movement Prep
+      </div>
+      <ul className="list-disc pl-5 space-y-1 text-sm text-slate-300/80">
+        {dayTab === "push" && (
+          <>
+            <li>12 Band pull-aparts</li>
+            <li>10 Arm circles (forward/back)</li>
+            <li>10 Slow pushups</li>
+            <li>10 Light shoulder presses</li>
+          </>
+        )}
+
+        {dayTab === "pull" && (
+          <>
+            <li>10 Band rows</li>
+            <li>10 Face pulls</li>
+            <li>10 Hip hinges</li>
+            <li>10 Bodyweight rows</li>
+          </>
+        )}
+
+        {dayTab === "legs" && (
+          <>
+            <li>10 Bodyweight squats</li>
+            <li>10 Lunges each leg</li>
+            <li>10 Glute bridges</li>
+            <li>10 Hip hinges</li>
+          </>
+        )}
+      </ul>
+    </div>
+
+    <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-3">
+      <div className="text-sm font-semibold text-white">
+        3. Ramp-Up Sets
+      </div>
+      <div className="text-sm text-slate-200/80 mt-1">
+        Bar × 10 → ~60% × 5 → ~75% × 3 → then working sets.
+      </div>
+    </div>
+  </CardContent>
+</Card>
                   {workoutList.map((ex, idx) => (
                     <WorkoutExerciseCard
                       key={ex.id}
